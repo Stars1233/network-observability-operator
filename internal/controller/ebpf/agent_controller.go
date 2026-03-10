@@ -145,8 +145,22 @@ func (c *AgentController) Reconcile(ctx context.Context, target *flowslatest.Flo
 		return err
 	}
 
-	if err := c.permissions.Reconcile(ctx, &target.Spec.Agent.EBPF); err != nil {
+	if err := c.permissions.Reconcile(ctx, target); err != nil {
 		return fmt.Errorf("reconciling permissions: %w", err)
+	}
+
+	if target.Spec.OnHold() {
+		c.Status.SetUnused("FlowCollector is on hold")
+		rlog.Info("action: delete agent")
+		err = c.DeleteIfOwned(ctx, current)
+		if err != nil {
+			return err
+		}
+		err = c.DeleteIfOwned(ctx, c.promSvc)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	err = c.reconcileMetricsService(ctx, &target.Spec.Agent.EBPF)
