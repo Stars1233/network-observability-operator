@@ -428,7 +428,8 @@ type FlowCollectorKafka struct {
 	// Kafka topic to use. It must exist. NetObserv does not create it.
 	Topic string `json:"topic"`
 
-	// TLS client configuration. When using TLS, verify that the address matches the Kafka port used for TLS, generally 9093.
+	// TLS and mTLS client configuration. When using TLS, verify that the address matches the Kafka port used for TLS, generally 9093.
+	// We recommend the use of mTLS for higher security standards.
 	// +optional
 	TLS ClientTLS `json:"tls"`
 
@@ -521,12 +522,13 @@ type FlowCollectorOpenTelemetry struct {
 	Metrics FlowCollectorOpenTelemetryMetrics `json:"metrics"`
 }
 
-type ServerTLSConfigType string
+type TLSConfigType string
 
 const (
-	ServerTLSDisabled ServerTLSConfigType = "Disabled"
-	ServerTLSProvided ServerTLSConfigType = "Provided"
-	ServerTLSAuto     ServerTLSConfigType = "Auto"
+	TLSDisabled TLSConfigType = "Disabled"
+	TLSProvided TLSConfigType = "Provided"
+	TLSAuto     TLSConfigType = "Auto"
+	TLSAutoMTLS TLSConfigType = "Auto-mTLS"
 )
 
 // `ServerTLS` define the TLS configuration, server side
@@ -539,7 +541,7 @@ type ServerTLS struct {
 	// +kubebuilder:validation:Enum:="Disabled";"Provided";"Auto"
 	// +kubebuilder:validation:Required
 	//+kubebuilder:default:="Disabled"
-	Type ServerTLSConfigType `json:"type,omitempty"`
+	Type TLSConfigType `json:"type,omitempty"`
 
 	// TLS configuration when `type` is set to `Provided`.
 	// +optional
@@ -552,7 +554,22 @@ type ServerTLS struct {
 
 	// Reference to the CA file when `type` is set to `Provided`.
 	// +optional
-	ProvidedCaFile *FileReference `json:"providedCaFile,omitempty"`
+	ProvidedCAFile *FileReference `json:"providedCaFile,omitempty"`
+}
+
+// `ClientServerTLS` define the TLS configuration for both client and server sides
+type ClientServerTLS struct {
+	// TLS client certificate reference, used for mTLS. Leave unset for simple TLS.
+	// +optional
+	ClientCert *CertificateReference `json:"clientCert,omitempty"`
+
+	// TLS server certificate reference.
+	// +optional
+	ServerCert *CertificateReference `json:"serverCert,omitempty"`
+
+	// Reference to the CA file.
+	// +optional
+	CAFile *FileReference `json:"caFile,omitempty"`
 }
 
 // `MetricsServerConfig` define the metrics server endpoint configuration for Prometheus scraper
@@ -711,6 +728,10 @@ type FlowCollectorFLP struct {
 	// Global configuration managing FlowCollectorSlices custom resources.
 	//+optional
 	SlicesConfig *SlicesConfig `json:"slicesConfig,omitempty"`
+
+	// Service configuration, only used when `spec.deploymentModel` is `Service`.
+	// +optional
+	Service *ProcessorServiceConfig `json:"service,omitempty"`
 
 	// `advanced` allows setting some aspects of the internal configuration of the flow processor.
 	// This section is aimed mostly for debugging and fine-grained performance optimizations,
@@ -1099,7 +1120,7 @@ type FlowCollectorConsolePlugin struct {
 	// Deploy as a standalone console, instead of a plugin of the OpenShift Console.
 	// This is not recommended when using with OpenShift, as it doesn't provide an integrated experience.
 	// [Unsupported (*)].
-	Standalone bool `json:"standalone,omitempty"`
+	Standalone *bool `json:"standalone,omitempty"`
 
 	//+kubebuilder:validation:Minimum=0
 	//+kubebuilder:default:=1
@@ -1513,6 +1534,23 @@ type SubnetLabel struct {
 	// +kubebuilder:validation:Pattern:="^[a-zA-Z_:-][a-zA-Z0-9_:-]*$"
 	//+required
 	Name string `json:"name,omitempty"`
+}
+
+type ProcessorServiceConfig struct {
+	// Select the type of TLS configuration:<br>
+	// - `Disabled` to not configure TLS for the endpoint. Disabling TLS results in a less secure deployment model.<br>
+	// - `Provided` to manually provide the key and certificate references.<br>
+	// - `Auto` (default) to enable automatically based on the running environment.<br>
+	// - `Auto-mTLS` to preconfigure mTLS. [Unsupported (*)].<br>
+	// See also: https://github.com/netobserv/netobserv-operator/blob/main/docs/TLS.md.
+	// +kubebuilder:validation:Enum:="Disabled";"Provided";"Auto";"Auto-mTLS"
+	// +kubebuilder:validation:Required
+	// +kubebuilder:default:="Auto"
+	TLSType TLSConfigType `json:"tlsType,omitempty"`
+
+	// TLS or mTLS configuration when `type` is set to `Provided`.
+	// +optional
+	ProvidedCertificates *ClientServerTLS `json:"providedCertificates,omitempty"`
 }
 
 // Add more exporter types below
