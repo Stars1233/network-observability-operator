@@ -1,6 +1,6 @@
 # NetObserv Operator
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/netobserv/network-observability-operator)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/netobserv/netobserv-operator)
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/NetObserv)](https://artifacthub.io/packages/helm/netobserv/netobserv-operator)
 [![Go Report Card](https://goreportcard.com/badge/github.com/netobserv/netobserv-operator)](https://goreportcard.com/report/github.com/netobserv/netobserv-operator)
 

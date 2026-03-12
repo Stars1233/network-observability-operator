@@ -537,8 +537,8 @@ related-release-notes: ## Grab release notes for related components (to be inser
 	echo -e "<details><summary><b>Flowlogs-Pipeline</b></summary>\n\n" >> /tmp/related.md
 	curl -s  https://api.github.com/repos/netobserv/flowlogs-pipeline/releases/tags/$(FLP_VERSION) | jq -r .body | xargs -0 printf "%b" | sed -r "s/##/###/" >> /tmp/related.md
 	echo -e "</details>\n" >> /tmp/related.md
-	echo -e "<details><summary><b>Console Plugin</b></summary>\n\n" >> /tmp/related.md
-	curl -s  https://api.github.com/repos/netobserv/network-observability-console-plugin/releases/tags/$(PLG_VERSION) | jq -r .body | xargs -0 printf "%b" | sed -r "s/##/###/" >> /tmp/related.md
+	echo -e "<details><summary><b>Web Console</b></summary>\n\n" >> /tmp/related.md
+	curl -s  https://api.github.com/repos/netobserv/netobserv-web-console/releases/tags/$(PLG_VERSION) | jq -r .body | xargs -0 printf "%b" | sed -r "s/##/###/" >> /tmp/related.md
 	echo -e "</details>\n" >> /tmp/related.md
 	wl-copy < /tmp/related.md
 	cat /tmp/related.md
