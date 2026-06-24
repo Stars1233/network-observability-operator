@@ -1030,6 +1030,8 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
+                - name: STATIC_PLUGIN_INHERIT_TOLERATION_SUBSCRIPTION
+                  value: netobserv-operator
                 image: quay.io/netobserv/network-observability-operator:1.11.5-community
                 imagePullPolicy: Always
                 livenessProbe:
@@ -1114,6 +1116,14 @@ spec:
           verbs:
           - create
           - patch
+        - apiGroups:
+          - operators.coreos.com
+          resources:
+          - subscriptions
+          verbs:
+          - get
+          - list
+          - watch
         serviceAccountName: netobserv-controller-manager
     strategy: deployment
   installModes:

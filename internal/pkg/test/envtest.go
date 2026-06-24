@@ -17,6 +17,7 @@ import (
 	osv1 "github.com/openshift/api/console/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	securityv1 "github.com/openshift/api/security/v1"
+	olm "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	ascv2 "k8s.io/api/autoscaling/v2"
@@ -149,6 +150,9 @@ func PrepareEnvTest(env Environment, controllers []manager.Registerer, opNamespa
 	err = lokiv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = olm.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
@@ -163,21 +167,28 @@ func PrepareEnvTest(env Environment, controllers []manager.Registerer, opNamespa
 	}
 
 	if env == EnvOpenShift {
-		setupOpenShiftClusterResources(ctx, k8sClient)
+		setupOpenShiftClusterResources(ctx, k8sClient, opNamespace)
+	}
+
+	managerConfig := manager.Config{
+		EBPFAgentImage:        "registry-proxy.engineering.redhat.com/rh-osbs/network-observability-ebpf-agent@sha256:6481481ba23375107233f8d0a4f839436e34e50c2ec550ead0a16c361ae6654e",
+		FlowlogsPipelineImage: "registry-proxy.engineering.redhat.com/rh-osbs/network-observability-flowlogs-pipeline@sha256:6481481ba23375107233f8d0a4f839436e34e50c2ec550ead0a16c361ae6654e",
+		ConsolePluginImageVariants: []manager.ConsolePluginImageVariant{
+			{Image: "registry-proxy.engineering.redhat.com/rh-osbs/network-observability-console-plugin@sha256:6481481ba23375107233f8d0a4f839436e34e50c2ec550ead0a16c361ae6654e", MinVersion: "4.14.0"},
+		},
+		DownstreamDeployment: false,
+		Namespace:            opNamespace,
+	}
+	if env == EnvOpenShift {
+		managerConfig.StaticPluginConfig = manager.StaticPluginConfig{
+			InheritTolerationFromSubscription: "netobserv-operator",
+		}
 	}
 
 	k8sManager, err := manager.NewManager(
 		ctx,
 		cfg,
-		&manager.Config{
-			EBPFAgentImage:        "registry-proxy.engineering.redhat.com/rh-osbs/network-observability-ebpf-agent@sha256:6481481ba23375107233f8d0a4f839436e34e50c2ec550ead0a16c361ae6654e",
-			FlowlogsPipelineImage: "registry-proxy.engineering.redhat.com/rh-osbs/network-observability-flowlogs-pipeline@sha256:6481481ba23375107233f8d0a4f839436e34e50c2ec550ead0a16c361ae6654e",
-			ConsolePluginImageVariants: []manager.ConsolePluginImageVariant{
-				{Image: "registry-proxy.engineering.redhat.com/rh-osbs/network-observability-console-plugin@sha256:6481481ba23375107233f8d0a4f839436e34e50c2ec550ead0a16c361ae6654e", MinVersion: "4.14.0"},
-			},
-			DownstreamDeployment: false,
-			Namespace:            opNamespace,
-		},
+		&managerConfig,
 		&ctrl.Options{
 			Scheme: scheme.Scheme,
 			Metrics: server.Options{
@@ -208,7 +219,7 @@ func PrepareEnvTest(env Environment, controllers []manager.Registerer, opNamespa
 	}
 }
 
-func setupOpenShiftClusterResources(ctx context.Context, k8sClient client.Client) {
+func setupOpenShiftClusterResources(ctx context.Context, k8sClient client.Client, opNamespace string) {
 	cv := &configv1.ClusterVersion{
 		ObjectMeta: metav1.ObjectMeta{Name: "version"},
 		Spec:       configv1.ClusterVersionSpec{ClusterID: "test-id"},
@@ -232,6 +243,12 @@ func setupOpenShiftClusterResources(ctx context.Context, k8sClient client.Client
 		Spec: configv1.NetworkSpec{
 			NetworkType: "OVNKubernetes",
 		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	err = k8sClient.Create(ctx, &olm.Subscription{
+		ObjectMeta: metav1.ObjectMeta{Name: "netobserv-operator", Namespace: opNamespace},
+		Spec:       &olm.SubscriptionSpec{},
 	})
 	Expect(err).NotTo(HaveOccurred())
 }

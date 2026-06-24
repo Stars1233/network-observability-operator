@@ -30,6 +30,7 @@ import (
 	osv1 "github.com/openshift/api/console/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	securityv1 "github.com/openshift/api/security/v1"
+	olm "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
@@ -87,6 +88,7 @@ func init() {
 	utilruntime.Must(bpfmaniov1alpha1.Install(scheme))
 	utilruntime.Must(lokiv1.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))
+	utilruntime.Must(olm.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -145,6 +147,7 @@ func main() {
 	}
 	setupLog.Info("Starting " + appVersion)
 
+	readConfigFromEnv(&config)
 	if err := config.Validate(); err != nil {
 		setupLog.Error(err, "unable to start the manager")
 		os.Exit(1)
@@ -236,5 +239,11 @@ func main() {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
+	}
+}
+
+func readConfigFromEnv(c *manager.Config) {
+	c.StaticPluginConfig = manager.StaticPluginConfig{
+		InheritTolerationFromSubscription: os.Getenv("STATIC_PLUGIN_INHERIT_TOLERATION_SUBSCRIPTION"),
 	}
 }

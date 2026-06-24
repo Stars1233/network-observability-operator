@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"time"
 
+	olm "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	flowslatest "github.com/netobserv/netobserv-operator/api/flowcollector/v1beta2"
 	"github.com/netobserv/netobserv-operator/internal/controller/consoleplugin"
+	"github.com/netobserv/netobserv-operator/internal/controller/constants"
 	"github.com/netobserv/netobserv-operator/internal/controller/reconcilers"
 	"github.com/netobserv/netobserv-operator/internal/pkg/helper"
 	"github.com/netobserv/netobserv-operator/internal/pkg/manager"
@@ -44,11 +48,23 @@ func Start(ctx context.Context, mgr *manager.Manager) (manager.PostCreateHook, e
 		status: mgr.Status.ForComponent(status.StaticController),
 	}
 
-	// Return initReconcile as a post-create hook
-	return r.initReconcile, ctrl.NewControllerManagedBy(mgr).
+	b := ctrl.NewControllerManagedBy(mgr).
 		For(&flowslatest.FlowCollector{}, reconcilers.IgnoreStatusChange).
-		Named("staticPlugin").
-		Complete(&r)
+		Named("staticPlugin")
+	if mgr.Config.StaticPluginConfig.InheritTolerationFromSubscription != "" {
+		b = b.Watches(
+			&olm.Subscription{},
+			handler.EnqueueRequestsFromMapFunc(func(_ context.Context, o client.Object) []reconcile.Request {
+				if o.GetNamespace() == mgr.Config.Namespace && o.GetName() == mgr.Config.StaticPluginConfig.InheritTolerationFromSubscription {
+					return []reconcile.Request{{NamespacedName: constants.FlowCollectorName}}
+				}
+				return []reconcile.Request{}
+			}),
+			reconcilers.IgnoreStatusChange,
+		)
+	}
+	// Return initReconcile as a post-create hook
+	return r.initReconcile, b.Complete(&r)
 }
 
 func (r *Reconciler) initReconcile(ctx context.Context) error {
@@ -92,7 +108,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result
 			if err != nil {
 				return ctrl.Result{}, r.status.Error("ConsolePluginImageError", fmt.Errorf("failed to resolve console plugin image: %w", err))
 			}
-			staticPluginReconciler := consoleplugin.NewStaticReconciler(ri)
+			staticPluginReconciler := consoleplugin.NewStaticReconciler(ri, &r.mgr.Config.StaticPluginConfig)
 			if err := staticPluginReconciler.ReconcileStaticPlugin(ctx, true); err != nil {
 				clog.Error(err, "Static plugin reconcile failure")
 				// Set status failure unless it was already set
