@@ -19,6 +19,9 @@ RUN GOGC=50 GOMAXPROCS=4 GOOS=linux GOARCH=$TARGETARCH \
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1777460003
 
+RUN microdnf install -y which findutils util-linux procps-ng net-tools iputils bind-utils wget tar gzip && \
+    microdnf clean all
+
 WORKDIR /tests
 
 # Copy the pre-compiled test binary, testdata and ginkgo binary
