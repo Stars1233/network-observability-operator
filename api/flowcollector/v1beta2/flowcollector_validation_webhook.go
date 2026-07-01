@@ -278,6 +278,7 @@ func (v *validator) validateFLP() {
 	v.validateFLPMetricsForAlerts()
 	v.validateFLPMetricsIncludeLists()
 	v.validateFLPTLS()
+	v.validatePortConflicts()
 }
 
 func (v *validator) validateScheduling() {
@@ -479,6 +480,58 @@ func (v *validator) validateFLPTLS() {
 				errors.New("missing configuration in spec.processor.providedCertificates.serverCert despite spec.processor.tlsType being set to Provided"),
 			)
 		}
+	}
+}
+
+func (v *validator) validatePortConflicts() {
+	// Only check port conflicts when informer cache proxy is enabled (when k8scache port is actually used)
+	if !v.fc.Processor.IsInformerCacheProxyEnabled() {
+		return
+	}
+
+	// Get the configured k8scache port (configurable or default)
+	k8scachePort := v.fc.Processor.GetK8sCachePort()
+
+	// Get advanced processor config with defaults
+	var port, healthPort, profilePort *int32
+	metricsPort := v.fc.Processor.GetMetricsPort()
+
+	if v.fc.Processor.Advanced != nil {
+		port = v.fc.Processor.Advanced.Port
+		healthPort = v.fc.Processor.Advanced.HealthPort
+		profilePort = v.fc.Processor.Advanced.ProfilePort
+	}
+
+	// Check FLP port
+	if port != nil && *port == k8scachePort {
+		v.errors = append(
+			v.errors,
+			fmt.Errorf("spec.processor.advanced.port %d conflicts with reserved k8scache port %d used by centralized informers", *port, k8scachePort),
+		)
+	}
+
+	// Check health port
+	if healthPort != nil && *healthPort == k8scachePort {
+		v.errors = append(
+			v.errors,
+			fmt.Errorf("spec.processor.advanced.healthPort %d conflicts with reserved k8scache port %d used by centralized informers", *healthPort, k8scachePort),
+		)
+	}
+
+	// Check metrics port
+	if metricsPort == k8scachePort {
+		v.errors = append(
+			v.errors,
+			fmt.Errorf("spec.processor.metrics.server.port %d conflicts with reserved k8scache port %d used by centralized informers", metricsPort, k8scachePort),
+		)
+	}
+
+	// Check profile port (optional)
+	if profilePort != nil && *profilePort == k8scachePort {
+		v.errors = append(
+			v.errors,
+			fmt.Errorf("spec.processor.advanced.profilePort %d conflicts with reserved k8scache port %d used by centralized informers", *profilePort, k8scachePort),
+		)
 	}
 }
 

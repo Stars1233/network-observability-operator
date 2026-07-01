@@ -53,7 +53,7 @@ func getConfig() flowslatest.FlowCollectorSpec {
 			Resources:       rs,
 			Metrics: flowslatest.FLPMetrics{
 				Server: flowslatest.MetricsServerConfig{
-					Port: ptr.To(int32(9090)),
+					Port: ptr.To(int32(9401)),
 					TLS: flowslatest.ServerTLS{
 						Type: flowslatest.TLSDisabled,
 					},
