@@ -405,9 +405,9 @@ func promService(desired *flowslatest.FlowCollectorSpec, svcName, namespace, app
 	return &svc
 }
 
-func serviceMonitor(desired *flowslatest.FlowCollectorSpec, smName, svcName, namespace, appLabel, version string, isDownstream, useEndpointSlices bool) *monitoringv1.ServiceMonitor {
+func serviceMonitor(desired *flowslatest.FlowCollectorSpec, smName, svcName, namespace, appLabel, version string, useEndpointSlices bool) *monitoringv1.ServiceMonitor {
 	serverName := fmt.Sprintf("%s.%s.svc", svcName, namespace)
-	scheme, smTLS := helper.GetServiceMonitorTLSConfig(&desired.Processor.Metrics.Server.TLS, serverName, isDownstream)
+	scheme, smTLS := helper.GetServiceMonitorTLSConfig(&desired.Processor.Metrics.Server.TLS, serverName)
 	var sdRole *monitoringv1.ServiceDiscoveryRole
 	if useEndpointSlices {
 		sdRole = ptr.To(monitoringv1.EndpointSliceRole)

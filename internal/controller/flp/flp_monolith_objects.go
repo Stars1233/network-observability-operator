@@ -228,7 +228,6 @@ func (b *monolithBuilder) serviceMonitor() *monitoringv1.ServiceMonitor {
 		b.info.Namespace,
 		monoName,
 		b.version,
-		b.info.IsDownstream,
 		b.info.ClusterInfo.HasPromServiceDiscoveryRole(),
 	)
 }
