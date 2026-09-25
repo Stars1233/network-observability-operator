@@ -60,7 +60,7 @@ jobs:
             BUNDLE_TARGET=OpenShift \
             CLEAN_BUILD=1 \
             BUNDLE_SET_DATE=true \
-            PIN_DIGEST=true \
+            PIN_DIGEST=false \
             make bundle-nogen bundle-build
       - name: push bundle to quay.io
         run: IMAGE_ORG="$WF_ORG" BUNDLE_VERSION="0.0.0-sha-$WF_VERSION" make bundle-push

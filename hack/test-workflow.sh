@@ -153,7 +153,12 @@ expect_image_tagged "$operator_image:$short_sha-s390x"
 
 run_step "push_image.yml" "push-image" "build bundle"
 expect_image_tagged "$bundle_image:v0.0.0-sha-main"
-expect_pinned_bundle_images true
+expect_occurrences $bundle_csv "$official_operator_image:main$" 2
+expect_occurrences $bundle_csv "quay.io/netobserv/netobserv-ebpf-agent:main$" 2
+expect_occurrences $bundle_csv "quay.io/netobserv/flowlogs-pipeline:main$" 2
+expect_occurrences $bundle_csv "quay.io/netobserv/network-observability-console-plugin:main$" 2
+expect_occurrences $bundle_csv "quay.io/netobserv/network-observability-console-plugin:main-pf4$" 2
+expect_occurrences $bundle_csv "quay.io/netobserv/network-observability-console-plugin:main-pf5$" 2
 
 run_step "push_image.yml" "push-image" "build catalog" "OPM_OPTS=--permissive"
 expect_image_tagged "$catalog_image:v0.0.0-sha-main"
